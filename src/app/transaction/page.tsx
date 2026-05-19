@@ -25,18 +25,18 @@ export default function TransactionPage() {
 
   if (!isMounted || !isLoggedIn) return null;
 
-  const loadByDate = () => {
+  function loadByDate() {
     const filtered = transactions.filter(tx => {
       if (tx.type !== tab) return false;
       const txDate = tx.date.split('T')[0];
       return txDate >= fromDate && txDate <= toDate;
     });
     setFilteredTransactions(filtered);
-  };
+  }
 
-  const loadAllTransactions = () => {
+  function loadAllTransactions() {
     setFilteredTransactions(transactions.filter(tx => tx.type === tab));
-  };
+  }
 
   const totalCash = filteredTransactions
     .filter(tx => tx.paymentMethod === 'Cash')
