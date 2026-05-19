@@ -69,6 +69,9 @@ interface StoreState {
   // Transactions
   transactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, 'id' | 'date'>) => void;
+
+  lastClearedTimestamp: number;
+  checkAndClearData: () => void;
 }
 
 const defaultMenu: MenuItem[] = [
@@ -86,6 +89,7 @@ export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
       isLoggedIn: false,
+      lastClearedTimestamp: Date.now(),
       login: (user, pass) => {
         if (user === 'abhishek' && pass === 'abhishek') {
           set({ isLoggedIn: true });
@@ -147,7 +151,6 @@ export const useStore = create<StoreState>()(
         const order = state.kitchenOrders.find(o => o.id === orderId);
         let newNotifications = state.notifications;
         
-        // Add notification if status becomes Ready
         if (order && status === 'Ready') {
           newNotifications = [{
             id: uuidv4(),
@@ -172,9 +175,30 @@ export const useStore = create<StoreState>()(
       addTransaction: (tx) => set((state) => ({
         transactions: [{ ...tx, id: uuidv4(), date: new Date().toISOString() }, ...state.transactions]
       })),
+
+      checkAndClearData: () => set((state) => {
+        const now = Date.now();
+        const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+        if (now - state.lastClearedTimestamp > FORTY_EIGHT_HOURS) {
+          return {
+            lastClearedTimestamp: now,
+            transactions: [],
+            kitchenOrders: [],
+            carts: {},
+            notifications: []
+          };
+        }
+        return {};
+      })
     }),
     {
       name: 'rc-chicken65-storage-v2',
+      onRehydrateStorage: () => (state) => {
+        // Runs after hydration finishes
+        if (state) {
+          state.checkAndClearData();
+        }
+      }
     }
   )
 );

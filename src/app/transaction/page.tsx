@@ -10,7 +10,7 @@ export default function TransactionPage() {
   const { isLoggedIn, transactions } = useStore();
   const [tab, setTab] = useState<'Sales' | 'Purchases'>('Sales');
   const [fromDate, setFromDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [toDate, setToDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
