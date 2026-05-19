@@ -10,8 +10,10 @@ export default function Home() {
   const router = useRouter();
   const { isLoggedIn, menuItems, carts, addToCart, updateCartItemQty, removeFromCart, clearCart, addTransaction, sendToKitchen, kitchenOrders, updateOrderStatus } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Online'>('Cash');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Online' | 'Credit'>('Cash');
   const [activeTable, setActiveTable] = useState('टेबल 1');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -30,7 +32,6 @@ export default function Home() {
   const cart = carts[activeTable] || [];
   const cartTotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
 
-  // Active kitchen orders for this table (not yet completed/billed)
   const activeOrdersForTable = kitchenOrders.filter(o => o.tableId === activeTable && o.status !== 'Completed');
   const orderTotal = activeOrdersForTable.reduce((sum, order) => {
     return sum + order.items.reduce((s, item) => s + (item.menuItem.price * item.quantity), 0);
@@ -47,9 +48,33 @@ export default function Home() {
     toast.success(`${activeTable} ची ऑर्डर किचनला पाठवली!`);
   };
 
+  const shareOnWhatsApp = (billItems: typeof cart, amount: number, payment: string, custName: string) => {
+    let message = `*RC Chicken65*\n--------------------\n`;
+    message += `Date: ${new Date().toLocaleDateString()}\n`;
+    message += `Table: ${activeTable}\n`;
+    if (custName) message += `Customer: ${custName}\n`;
+    message += `--------------------\n`;
+    billItems.forEach(item => {
+      message += `${item.menuItem.name} x${item.quantity} - ₹${item.menuItem.price * item.quantity}\n`;
+    });
+    message += `--------------------\n`;
+    message += `*Total: ₹${amount}*\n`;
+    message += `Payment: ${payment}\n\n`;
+    message += `Thank you for visiting!`;
+    
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   const handleGenerateBill = () => {
     if (cart.length === 0 && activeOrdersForTable.length === 0) {
       toast.error('कार्ट आणि ऑर्डर्स रिकाम्या आहेत!');
+      return;
+    }
+    
+    if (paymentMethod === 'Credit' && (!customerName || !customerPhone)) {
+      toast.error('उधारीसाठी ग्राहकाचे नाव आणि नंबर आवश्यक आहे!');
       return;
     }
     
@@ -63,24 +88,33 @@ export default function Home() {
       totalAmount: grandTotal,
       paymentMethod,
       type: 'Sales',
-      tableId: activeTable
+      tableId: activeTable,
+      customerName: paymentMethod === 'Credit' ? customerName : undefined,
+      customerPhone: paymentMethod === 'Credit' ? customerPhone : undefined,
     });
     
     clearCart(activeTable);
-    // Mark kitchen orders as completed
     activeOrdersForTable.forEach(o => updateOrderStatus(o.id, 'Completed'));
     
     toast.success(`${activeTable} चे बिल यशस्वीरित्या तयार झाले!`);
+    
+    // Optionally trigger WhatsApp share
+    if (confirm('तुम्हाला हे बिल WhatsApp वर पाठवायचे आहे का?')) {
+      shareOnWhatsApp(allItemsToBill, grandTotal, paymentMethod, customerName);
+    }
+    
+    setCustomerName('');
+    setCustomerPhone('');
+    setPaymentMethod('Cash');
   };
 
-  const tables = ['टेबल 1', 'टेबल 2', 'टेबल 3', 'टेबल 4', 'टेबल 5'];
+  const tables = ['टेबल 1', 'टेबल 2', 'टेबल 3', 'टेबल 4', 'टेबल 5', 'पार्सल'];
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)]">
       {/* Tables Row */}
       <div className="flex overflow-x-auto whitespace-nowrap border-b bg-white scrollbar-hide">
         {tables.map((table) => {
-          // Check if table has active ready orders
           const hasReady = kitchenOrders.some(o => o.tableId === table && o.status === 'Ready');
           return (
             <button
@@ -122,7 +156,6 @@ export default function Home() {
 
       <div className="bg-white border-t mt-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
         
-        {/* Kitchen Orders Section */}
         {activeOrdersForTable.length > 0 && (
           <div className="bg-orange-50 border-b border-orange-100 p-2 max-h-24 overflow-y-auto">
             <h4 className="text-xs font-bold text-orange-800 mb-1">Kitchen Orders:</h4>
@@ -184,21 +217,46 @@ export default function Home() {
           <span className="font-bold text-sm">एकूण रक्कम: ₹{grandTotal}</span>
         </div>
 
-        <div className="p-2 flex items-center justify-between">
-          <div className="flex bg-[#eef5fa] rounded-lg overflow-hidden border border-[#5c1315] flex-1 mr-2">
+        <div className="p-2 flex flex-col space-y-2">
+          <div className="flex bg-[#eef5fa] rounded-lg overflow-hidden border border-[#5c1315] w-full">
             <button 
               onClick={() => setPaymentMethod('Cash')}
-              className={`flex-1 py-1 text-xs font-bold ${paymentMethod === 'Cash' ? 'bg-[#5c1315] text-white' : 'text-[#5c1315]'}`}
+              className={`flex-1 py-1.5 text-xs font-bold ${paymentMethod === 'Cash' ? 'bg-[#5c1315] text-white' : 'text-[#5c1315]'}`}
             >
               रोख
             </button>
             <button 
               onClick={() => setPaymentMethod('Online')}
-              className={`flex-1 py-1 text-xs font-bold ${paymentMethod === 'Online' ? 'bg-[#5c1315] text-white' : 'text-[#5c1315]'}`}
+              className={`flex-1 py-1.5 text-xs font-bold ${paymentMethod === 'Online' ? 'bg-[#5c1315] text-white' : 'text-[#5c1315]'}`}
             >
               ऑनलाईन
             </button>
+            <button 
+              onClick={() => setPaymentMethod('Credit')}
+              className={`flex-1 py-1.5 text-xs font-bold ${paymentMethod === 'Credit' ? 'bg-[#5c1315] text-white' : 'text-[#5c1315]'}`}
+            >
+              उधारी
+            </button>
           </div>
+          
+          {paymentMethod === 'Credit' && (
+            <div className="flex space-x-2">
+              <input 
+                type="text" 
+                placeholder="ग्राहकाचे नाव" 
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="flex-1 p-1.5 border border-gray-300 rounded text-xs" 
+              />
+              <input 
+                type="tel" 
+                placeholder="मोबाईल नंबर" 
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="flex-1 p-1.5 border border-gray-300 rounded text-xs" 
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex p-2 space-x-2 bg-gray-50">

@@ -84,6 +84,10 @@ export default function TopHeader() {
             Kitchen (KOT)
           </Link>
           <hr />
+          <Link href="/expenses" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
+            रोजचा खर्च (Expenses)
+          </Link>
+          <hr />
           <Link href="/settings" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
             Add Menu
           </Link>

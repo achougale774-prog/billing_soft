@@ -29,9 +29,18 @@ export interface Transaction {
   date: string;
   items: CartItem[];
   totalAmount: number;
-  paymentMethod: 'Cash' | 'Online';
+  paymentMethod: 'Cash' | 'Online' | 'Credit';
   type: 'Sales' | 'Purchases';
   tableId?: string;
+  customerName?: string;
+  customerPhone?: string;
+}
+
+export interface Expense {
+  id: string;
+  title: string;
+  amount: number;
+  date: string;
 }
 
 interface Notification {
@@ -69,6 +78,11 @@ interface StoreState {
   // Transactions
   transactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, 'id' | 'date'>) => void;
+
+  // Expenses
+  expenses: Expense[];
+  addExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
+  deleteExpense: (id: string) => void;
 }
 
 const defaultMenu: MenuItem[] = [
@@ -170,6 +184,14 @@ export const useStore = create<StoreState>()(
       transactions: [],
       addTransaction: (tx) => set((state) => ({
         transactions: [{ ...tx, id: uuidv4(), date: new Date().toISOString() }, ...state.transactions]
+      })),
+
+      expenses: [],
+      addExpense: (expense) => set((state) => ({
+        expenses: [{ ...expense, id: uuidv4(), date: new Date().toISOString() }, ...state.expenses]
+      })),
+      deleteExpense: (id) => set((state) => ({
+        expenses: state.expenses.filter((e) => e.id !== id)
       })),
     }),
     {

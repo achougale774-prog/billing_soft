@@ -45,6 +45,10 @@ export default function TransactionPage() {
   const totalOnline = filteredTransactions
     .filter(tx => tx.paymentMethod === 'Online')
     .reduce((sum, tx) => sum + tx.totalAmount, 0);
+    
+  const totalCredit = filteredTransactions
+    .filter(tx => tx.paymentMethod === 'Credit')
+    .reduce((sum, tx) => sum + tx.totalAmount, 0);
 
   const totalBalance = totalCash + totalOnline;
 
@@ -109,14 +113,18 @@ export default function TransactionPage() {
       </div>
 
       {/* Totals */}
-      <div className="flex space-x-4 mb-6">
-        <div className="flex-1 bg-[#fff0f3] border border-[#ffe0e6] rounded-xl p-4 flex flex-col items-center justify-center shadow-sm">
-          <span className="text-[#5c1315] font-semibold text-sm">एकूण रोख</span>
-          <span className="text-xl font-bold mt-1">₹{totalCash.toFixed(2)}</span>
+      <div className="flex space-x-2 mb-6">
+        <div className="flex-1 bg-[#fff0f3] border border-[#ffe0e6] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
+          <span className="text-[#5c1315] font-semibold text-xs">रोख</span>
+          <span className="text-lg font-bold mt-1">₹{totalCash.toFixed(2)}</span>
         </div>
-        <div className="flex-1 bg-[#fffff0] border border-[#f0f0d0] rounded-xl p-4 flex flex-col items-center justify-center shadow-sm">
-          <span className="text-[#5c1315] font-semibold text-sm">एकूण ऑनलाईन</span>
-          <span className="text-xl font-bold mt-1">₹{totalOnline.toFixed(2)}</span>
+        <div className="flex-1 bg-[#fffff0] border border-[#f0f0d0] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
+          <span className="text-[#5c1315] font-semibold text-xs">ऑनलाईन</span>
+          <span className="text-lg font-bold mt-1">₹{totalOnline.toFixed(2)}</span>
+        </div>
+        <div className="flex-1 bg-[#f0f4ff] border border-[#d0e0ff] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
+          <span className="text-[#3b5998] font-semibold text-xs">उधारी</span>
+          <span className="text-lg font-bold mt-1">₹{totalCredit.toFixed(2)}</span>
         </div>
       </div>
 
@@ -133,9 +141,13 @@ export default function TransactionPage() {
             filteredTransactions.map((tx) => (
               <div key={tx.id} className="grid grid-cols-4 p-3 border-b text-sm text-gray-700 items-center">
                 <div className="truncate pr-2">{format(parseISO(tx.date), 'dd/MM/yyyy')}</div>
-                <div className="truncate pr-2">Customer</div>
-                <div>{tx.paymentMethod === 'Cash' ? 'रोख' : 'ऑनलाईन'}</div>
-                <div className="text-right font-medium">₹{tx.totalAmount.toFixed(2)}</div>
+                <div className="truncate pr-2 text-xs">
+                  {tx.paymentMethod === 'Credit' && tx.customerName ? tx.customerName : 'Customer'}
+                </div>
+                <div className="text-xs font-semibold">
+                  {tx.paymentMethod === 'Cash' ? 'रोख' : tx.paymentMethod === 'Online' ? 'ऑनलाईन' : 'उधारी'}
+                </div>
+                <div className="text-right font-bold text-gray-900">₹{tx.totalAmount.toFixed(2)}</div>
               </div>
             ))
           ) : (
