@@ -1,23 +1,67 @@
 'use client';
-import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, X, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useStore } from '@/store/useStore';
 
 export default function TopHeader() {
   const [isOpen, setIsOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const pathname = usePathname();
+  const { notifications, markNotificationRead } = useStore();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   if (pathname === '/login') return null;
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <>
       <header className="bg-white p-4 shadow-sm flex items-center justify-between z-40 relative">
         <h1 className="text-xl text-[#5c1315] font-semibold">RC Chicken65</h1>
-        <button onClick={() => setIsOpen(true)} className="p-2">
-          <Menu className="w-6 h-6 text-[#5c1315]" />
-        </button>
+        <div className="flex items-center space-x-4">
+          {isMounted && (
+            <button className="relative p-1" onClick={() => setShowNotifications(!showNotifications)}>
+              <Bell className="w-6 h-6 text-[#5c1315]" />
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          )}
+          <button onClick={() => setIsOpen(true)} className="p-1">
+            <Menu className="w-6 h-6 text-[#5c1315]" />
+          </button>
+        </div>
       </header>
+
+      {/* Notifications Dropdown */}
+      {showNotifications && (
+        <div className="absolute top-16 right-4 w-72 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
+          <div className="bg-[#5c1315] text-white px-4 py-2 font-semibold text-sm">Notifications</div>
+          <div className="max-h-64 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="p-4 text-center text-sm text-gray-500">No notifications</div>
+            ) : (
+              notifications.map(n => (
+                <div 
+                  key={n.id} 
+                  className={`p-3 border-b text-sm cursor-pointer ${n.read ? 'bg-white text-gray-600' : 'bg-blue-50 font-semibold text-gray-900'}`}
+                  onClick={() => markNotificationRead(n.id)}
+                >
+                  {n.message}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Overlay */}
       {isOpen && (
@@ -36,6 +80,10 @@ export default function TopHeader() {
           </button>
         </div>
         <nav className="p-4 space-y-4">
+          <Link href="/kitchen" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
+            Kitchen (KOT)
+          </Link>
+          <hr />
           <Link href="/settings" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
             Add Menu
           </Link>

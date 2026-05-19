@@ -14,6 +14,16 @@ export interface CartItem {
   quantity: number;
 }
 
+export type OrderStatus = 'Pending' | 'Preparing' | 'Ready' | 'Completed';
+
+export interface KitchenOrder {
+  id: string;
+  tableId: string;
+  items: CartItem[];
+  status: OrderStatus;
+  timestamp: string;
+}
+
 export interface Transaction {
   id: string;
   date: string;
@@ -21,6 +31,14 @@ export interface Transaction {
   totalAmount: number;
   paymentMethod: 'Cash' | 'Online';
   type: 'Sales' | 'Purchases';
+  tableId?: string;
+}
+
+interface Notification {
+  id: string;
+  message: string;
+  read: boolean;
+  timestamp: string;
 }
 
 interface StoreState {
@@ -32,12 +50,23 @@ interface StoreState {
   addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
   deleteMenuItem: (id: string) => void;
 
-  cart: CartItem[];
-  addToCart: (item: MenuItem, quantity: number) => void;
-  updateCartItemQty: (id: string, qty: number) => void;
-  removeFromCart: (id: string) => void;
-  clearCart: () => void;
+  // Table-wise carts
+  carts: Record<string, CartItem[]>;
+  addToCart: (tableId: string, item: MenuItem, quantity: number) => void;
+  updateCartItemQty: (tableId: string, id: string, qty: number) => void;
+  removeFromCart: (tableId: string, id: string) => void;
+  clearCart: (tableId: string) => void;
 
+  // Kitchen Orders (KOT)
+  kitchenOrders: KitchenOrder[];
+  sendToKitchen: (tableId: string, items: CartItem[]) => void;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+
+  // Notifications
+  notifications: Notification[];
+  markNotificationRead: (id: string) => void;
+
+  // Transactions
   transactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, 'id' | 'date'>) => void;
 }
@@ -70,23 +99,74 @@ export const useStore = create<StoreState>()(
       addMenuItem: (item) => set((state) => ({ menuItems: [...state.menuItems, { ...item, id: uuidv4() }] })),
       deleteMenuItem: (id) => set((state) => ({ menuItems: state.menuItems.filter((i) => i.id !== id) })),
 
-      cart: [],
-      addToCart: (item, quantity) => set((state) => {
-        const existing = state.cart.find((c) => c.menuItem.id === item.id);
+      carts: {},
+      addToCart: (tableId, item, quantity) => set((state) => {
+        const tableCart = state.carts[tableId] || [];
+        const existing = tableCart.find((c) => c.menuItem.id === item.id);
+        
+        let newTableCart;
         if (existing) {
-          return {
-            cart: state.cart.map((c) => c.id === existing.id ? { ...c, quantity: c.quantity + quantity } : c)
-          };
+          newTableCart = tableCart.map((c) => c.id === existing.id ? { ...c, quantity: c.quantity + quantity } : c);
+        } else {
+          newTableCart = [...tableCart, { id: uuidv4(), menuItem: item, quantity }];
         }
-        return { cart: [...state.cart, { id: uuidv4(), menuItem: item, quantity }] };
+        
+        return { carts: { ...state.carts, [tableId]: newTableCart } };
       }),
-      updateCartItemQty: (id, qty) => set((state) => ({
-        cart: state.cart.map((c) => c.id === id ? { ...c, quantity: qty } : c)
+      updateCartItemQty: (tableId, id, qty) => set((state) => {
+        const tableCart = state.carts[tableId] || [];
+        return {
+          carts: { ...state.carts, [tableId]: tableCart.map((c) => c.id === id ? { ...c, quantity: qty } : c) }
+        };
+      }),
+      removeFromCart: (tableId, id) => set((state) => {
+        const tableCart = state.carts[tableId] || [];
+        return {
+          carts: { ...state.carts, [tableId]: tableCart.filter((c) => c.id !== id) }
+        };
+      }),
+      clearCart: (tableId) => set((state) => ({
+        carts: { ...state.carts, [tableId]: [] }
       })),
-      removeFromCart: (id) => set((state) => ({
-        cart: state.cart.filter((c) => c.id !== id)
+
+      kitchenOrders: [],
+      sendToKitchen: (tableId, items) => set((state) => {
+        const newOrder: KitchenOrder = {
+          id: uuidv4(),
+          tableId,
+          items,
+          status: 'Pending',
+          timestamp: new Date().toISOString()
+        };
+        return {
+          kitchenOrders: [...state.kitchenOrders, newOrder],
+          carts: { ...state.carts, [tableId]: [] } // Clear cart after sending to kitchen
+        };
+      }),
+      updateOrderStatus: (orderId, status) => set((state) => {
+        const order = state.kitchenOrders.find(o => o.id === orderId);
+        let newNotifications = state.notifications;
+        
+        // Add notification if status becomes Ready
+        if (order && status === 'Ready') {
+          newNotifications = [{
+            id: uuidv4(),
+            message: `${order.tableId} ची ऑर्डर तयार आहे!`,
+            read: false,
+            timestamp: new Date().toISOString()
+          }, ...state.notifications];
+        }
+        
+        return {
+          kitchenOrders: state.kitchenOrders.map(o => o.id === orderId ? { ...o, status } : o),
+          notifications: newNotifications
+        };
+      }),
+
+      notifications: [],
+      markNotificationRead: (id) => set((state) => ({
+        notifications: state.notifications.map(n => n.id === id ? { ...n, read: true } : n)
       })),
-      clearCart: () => set({ cart: [] }),
 
       transactions: [],
       addTransaction: (tx) => set((state) => ({
@@ -94,7 +174,7 @@ export const useStore = create<StoreState>()(
       })),
     }),
     {
-      name: 'rc-chicken65-storage',
+      name: 'rc-chicken65-storage-v2',
     }
   )
 );
