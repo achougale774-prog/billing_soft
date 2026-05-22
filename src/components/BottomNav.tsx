@@ -15,10 +15,6 @@ export default function BottomNav() {
         <Triangle className={`w-6 h-6 fill-current`} />
         <span className="text-xs mt-1">POS</span>
       </Link>
-      <Link href="/kitchen" className={`flex flex-col items-center justify-center p-3 flex-1 ${isActive('/kitchen') ? 'bg-[#5c1315] text-white' : 'text-[#5c1315]'}`}>
-        <ChefHat className={`w-6 h-6 ${isActive('/kitchen') ? 'text-white' : 'text-[#5c1315]'}`} />
-        <span className="text-xs mt-1">Kitchen</span>
-      </Link>
       <Link href="/transaction" className={`flex flex-col items-center justify-center p-3 flex-1 ${isActive('/transaction') ? 'bg-[#5c1315] text-white' : 'text-[#5c1315]'}`}>
         <Square className={`w-6 h-6 fill-current`} />
         <span className="text-xs mt-1">Transaction</span>

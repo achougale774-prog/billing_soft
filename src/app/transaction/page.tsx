@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore, Transaction } from '@/store/useStore';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function TransactionPage() {
   const router = useRouter();
@@ -25,14 +27,71 @@ export default function TransactionPage() {
 
   if (!isMounted || !isLoggedIn) return null;
 
-  function loadByDate() {
+  function loadByDateRange(start: string, end: string) {
+    setFromDate(start);
+    setToDate(end);
     const filtered = transactions.filter(tx => {
       if (tx.type !== tab) return false;
       const txDate = tx.date.split('T')[0];
-      return txDate >= fromDate && txDate <= toDate;
+      return txDate >= start && txDate <= end;
     });
     setFilteredTransactions(filtered);
   }
+
+  function loadByDate() {
+    loadByDateRange(fromDate, toDate);
+  }
+
+  function handleThisWeek() {
+    const today = new Date();
+    loadByDateRange(
+      format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    );
+  }
+
+  function handleThisMonth() {
+    const today = new Date();
+    loadByDateRange(
+      format(startOfMonth(today), 'yyyy-MM-dd'),
+      format(endOfMonth(today), 'yyyy-MM-dd')
+    );
+  }
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Transaction Report (${tab})`, 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Date: ${format(new Date(fromDate), 'dd/MM/yyyy')} to ${format(new Date(toDate), 'dd/MM/yyyy')}`, 14, 22);
+    
+    const tableData = filteredTransactions.map(tx => [
+      format(parseISO(tx.date), 'dd/MM/yyyy'),
+      tx.customerName || 'Customer',
+      tx.paymentMethod,
+      tx.totalAmount.toFixed(2)
+    ]);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [['Date', 'Customer', 'Payment Mode', 'Amount (Rs)']],
+      body: tableData,
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 30;
+    
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text('--- Summary Calculation ---', 14, finalY + 10);
+    doc.setFontSize(10);
+    doc.text(`Cash Total: Rs. ${totalCash.toFixed(2)}`, 14, finalY + 16);
+    doc.text(`Online Total: Rs. ${totalOnline.toFixed(2)}`, 14, finalY + 22);
+    doc.text(`Credit (Udhari) Total: Rs. ${totalCredit.toFixed(2)}`, 14, finalY + 28);
+    
+    doc.setFontSize(12);
+    doc.text(`Total Balance (Cash + Online): Rs. ${totalBalance.toFixed(2)}`, 14, finalY + 36);
+
+    doc.save(`Report_${tab}_${fromDate}_to_${toDate}.pdf`);
+  };
 
   function loadAllTransactions() {
     setFilteredTransactions(transactions.filter(tx => tx.type === tab));
@@ -96,19 +155,41 @@ export default function TransactionPage() {
         </div>
       </div>
 
+      {/* Quick Filters */}
+      <div className="flex space-x-2 mb-4">
+        <button 
+          onClick={handleThisWeek}
+          className="flex-1 bg-blue-50 text-blue-700 py-2 rounded text-xs font-semibold border border-blue-200"
+        >
+          या आठवड्याचा
+        </button>
+        <button 
+          onClick={handleThisMonth}
+          className="flex-1 bg-green-50 text-green-700 py-2 rounded text-xs font-semibold border border-green-200"
+        >
+          या महिन्याचा
+        </button>
+        <button 
+          onClick={downloadPDF}
+          className="flex-1 bg-red-50 text-red-700 py-2 rounded text-xs font-semibold border border-red-200"
+        >
+          PDF डाउनलोड
+        </button>
+      </div>
+
       {/* Action Buttons */}
       <div className="space-y-3 mb-6">
         <button 
           onClick={loadByDate}
           className="w-full bg-[#5c1315] text-white py-3 rounded text-sm font-medium hover:bg-[#4a0f11] transition-colors"
         >
-          व्यवहार तारखेनुसार लोड पहा
+          व्यवहार तारखेनुसार पहा
         </button>
         <button 
           onClick={loadAllTransactions}
           className="w-full bg-[#fce899] text-[#5c1315] py-3 rounded text-sm font-medium hover:bg-[#ebd57b] transition-colors"
         >
-          सर्व व्यवहार लोड पहा
+          सर्व व्यवहार पहा
         </button>
       </div>
 

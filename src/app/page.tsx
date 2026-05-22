@@ -2,19 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useStore, MenuItem, KitchenOrder } from '@/store/useStore';
+import { useStore, MenuItem } from '@/store/useStore';
 import { toast } from 'sonner';
-import { Plus, Minus, X, ChefHat, CheckCircle } from 'lucide-react';
+import { Plus, Minus, X, CheckCircle } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
-  const { isLoggedIn, menuItems, carts, addToCart, updateCartItemQty, removeFromCart, clearCart, addTransaction, sendToKitchen, kitchenOrders, updateOrderStatus } = useStore();
+  const { isLoggedIn, menuItems, carts, addToCart, updateCartItemQty, removeFromCart, clearCart, addTransaction } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Online' | 'Credit'>('Cash');
   const [activeTable, setActiveTable] = useState('टेबल 1');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [isMounted, setIsMounted] = useState(false);
+  const [lastBill, setLastBill] = useState<{
+    items: typeof cart;
+    totalAmount: number;
+    paymentMethod: string;
+    tableId: string;
+    customerName?: string;
+    date: Date;
+  } | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -32,44 +40,12 @@ export default function Home() {
   const cart = carts[activeTable] || [];
   const cartTotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
 
-  const activeOrdersForTable = kitchenOrders.filter(o => o.tableId === activeTable && o.status !== 'Completed');
-  const orderTotal = activeOrdersForTable.reduce((sum, order) => {
-    return sum + order.items.reduce((s, item) => s + (item.menuItem.price * item.quantity), 0);
-  }, 0);
+  const grandTotal = cartTotal;
 
-  const grandTotal = cartTotal + orderTotal;
-
-  const handleSendToKitchen = () => {
-    if (cart.length === 0) {
-      toast.error('कार्ट रिकामी आहे!');
-      return;
-    }
-    sendToKitchen(activeTable, cart);
-    toast.success(`${activeTable} ची ऑर्डर किचनला पाठवली!`);
-  };
-
-  const shareOnWhatsApp = (billItems: typeof cart, amount: number, payment: string, custName: string) => {
-    let message = `*RC Chicken65*\n--------------------\n`;
-    message += `Date: ${new Date().toLocaleDateString()}\n`;
-    message += `Table: ${activeTable}\n`;
-    if (custName) message += `Customer: ${custName}\n`;
-    message += `--------------------\n`;
-    billItems.forEach(item => {
-      message += `${item.menuItem.name} x${item.quantity} - ₹${item.menuItem.price * item.quantity}\n`;
-    });
-    message += `--------------------\n`;
-    message += `*Total: ₹${amount}*\n`;
-    message += `Payment: ${payment}\n\n`;
-    message += `Thank you for visiting!`;
-    
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-  };
 
   const handleGenerateBill = () => {
-    if (cart.length === 0 && activeOrdersForTable.length === 0) {
-      toast.error('कार्ट आणि ऑर्डर्स रिकाम्या आहेत!');
+    if (cart.length === 0) {
+      toast.error('कार्ट रिकामी आहे!');
       return;
     }
     
@@ -78,10 +54,7 @@ export default function Home() {
       return;
     }
     
-    const allItemsToBill = [
-      ...cart,
-      ...activeOrdersForTable.flatMap(o => o.items)
-    ];
+    const allItemsToBill = [...cart];
     
     addTransaction({
       items: allItemsToBill,
@@ -93,15 +66,23 @@ export default function Home() {
       customerPhone: paymentMethod === 'Credit' ? customerPhone : undefined,
     });
     
+    setLastBill({
+      items: allItemsToBill,
+      totalAmount: grandTotal,
+      paymentMethod,
+      tableId: activeTable,
+      customerName,
+      date: new Date()
+    });
+
     clearCart(activeTable);
-    activeOrdersForTable.forEach(o => updateOrderStatus(o.id, 'Completed'));
     
     toast.success(`${activeTable} चे बिल यशस्वीरित्या तयार झाले!`);
     
-    // Optionally trigger WhatsApp share
-    if (confirm('तुम्हाला हे बिल WhatsApp वर पाठवायचे आहे का?')) {
-      shareOnWhatsApp(allItemsToBill, grandTotal, paymentMethod, customerName);
-    }
+    // Auto-prompt print after a short delay
+    setTimeout(() => {
+      window.print();
+    }, 500);
     
     setCustomerName('');
     setCustomerPhone('');
@@ -111,11 +92,11 @@ export default function Home() {
   const tables = ['टेबल 1', 'टेबल 2', 'टेबल 3', 'टेबल 4', 'टेबल 5', 'पार्सल'];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)]">
+    <>
+    <div className="flex flex-col h-[calc(100vh-140px)] print:hidden">
       {/* Tables Row */}
       <div className="flex overflow-x-auto whitespace-nowrap border-b bg-white scrollbar-hide">
         {tables.map((table) => {
-          const hasReady = kitchenOrders.some(o => o.tableId === table && o.status === 'Ready');
           return (
             <button
               key={table}
@@ -125,7 +106,6 @@ export default function Home() {
               }`}
             >
               {table}
-              {hasReady && <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>}
             </button>
           )
         })}
@@ -155,23 +135,6 @@ export default function Home() {
       </div>
 
       <div className="bg-white border-t mt-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-        
-        {activeOrdersForTable.length > 0 && (
-          <div className="bg-orange-50 border-b border-orange-100 p-2 max-h-24 overflow-y-auto">
-            <h4 className="text-xs font-bold text-orange-800 mb-1">Kitchen Orders:</h4>
-            {activeOrdersForTable.map(order => (
-              <div key={order.id} className="flex justify-between items-center text-xs mb-1">
-                <span className="text-gray-600">{order.items.map(i => `${i.menuItem.name}x${i.quantity}`).join(', ')}</span>
-                <span className={`font-semibold px-2 py-0.5 rounded ${
-                  order.status === 'Ready' ? 'bg-green-100 text-green-700' : 
-                  order.status === 'Preparing' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-700'
-                }`}>
-                  {order.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         <div className="bg-[#5c1315] text-white text-xs grid grid-cols-12 p-2">
           <div className="col-span-4">पदार्थ</div>
@@ -261,21 +224,63 @@ export default function Home() {
 
         <div className="flex p-2 space-x-2 bg-gray-50">
           <button 
-            onClick={handleSendToKitchen}
-            disabled={cart.length === 0}
-            className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-orange-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChefHat size={16} className="mr-2" /> किचनला पाठवा
-          </button>
-          <button 
             onClick={handleGenerateBill}
             disabled={grandTotal === 0}
-            className="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-green-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-green-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CheckCircle size={16} className="mr-2" /> बिल तयार करा
           </button>
         </div>
       </div>
     </div>
+    
+    {/* Thermal Receipt Print Area */}
+    <div className="hidden print:block w-[58mm] text-black bg-white p-2 text-xs font-mono">
+      <div className="text-center mb-4">
+        <h2 className="font-bold text-lg">RC Chicken65</h2>
+        <p className="text-[10px]">Mobile POS App</p>
+        <p className="text-[10px] border-b pb-2 mb-2">
+          {lastBill ? lastBill.date.toLocaleString() : new Date().toLocaleString()}
+        </p>
+      </div>
+
+      <div className="mb-2">
+        <p><strong>Table:</strong> {lastBill?.tableId || activeTable}</p>
+        {lastBill?.customerName && <p><strong>Cust:</strong> {lastBill.customerName}</p>}
+        <p><strong>Pay:</strong> {lastBill?.paymentMethod}</p>
+      </div>
+
+      <div className="border-b border-t py-2 mb-2">
+        <table className="w-full text-left">
+          <thead>
+            <tr>
+              <th className="pb-1">Item</th>
+              <th className="pb-1 text-center">Qty</th>
+              <th className="pb-1 text-right">Amt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(lastBill?.items || cart).map((item, i) => (
+              <tr key={i}>
+                <td className="py-1 break-words">{item.menuItem.name}</td>
+                <td className="py-1 text-center">{item.quantity}</td>
+                <td className="py-1 text-right text-[10px]">{(item.menuItem.price * item.quantity).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex justify-between font-bold text-sm">
+        <span>TOTAL:</span>
+        <span>Rs. {(lastBill?.totalAmount || grandTotal).toFixed(2)}</span>
+      </div>
+      
+      <div className="text-center mt-6 text-[10px]">
+        <p>Thank You, Visit Again!</p>
+        <p>****</p>
+      </div>
+    </div>
+    </>
   );
 }

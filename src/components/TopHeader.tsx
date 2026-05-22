@@ -1,16 +1,23 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Menu, X, Bell } from 'lucide-react';
+import { Menu, X, Bell, LogOut } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
 
 export default function TopHeader() {
   const [isOpen, setIsOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const pathname = usePathname();
-  const { notifications, markNotificationRead } = useStore();
+  const router = useRouter();
+  const { notifications, markNotificationRead, logout } = useStore();
   const [isMounted, setIsMounted] = useState(false);
+
+  const handleLogout = () => {
+    setIsOpen(false);
+    logout();
+    router.push('/login');
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -23,7 +30,7 @@ export default function TopHeader() {
   return (
     <>
       <header className="bg-white p-4 shadow-sm flex items-center justify-between z-40 relative">
-        <h1 className="text-xl text-[#5c1315] font-semibold">RC Chicken65</h1>
+        <h1 className="text-xl text-[#5c1315] font-bold tracking-tight">Billing Software</h1>
         <div className="flex items-center space-x-4">
           {isMounted && (
             <button className="relative p-1" onClick={() => setShowNotifications(!showNotifications)}>
@@ -80,21 +87,29 @@ export default function TopHeader() {
           </button>
         </div>
         <nav className="p-4 space-y-4">
-          <Link href="/kitchen" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
-            Kitchen (KOT)
+          <Link href="/customers" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
+            ग्राहक खाते (Udhari)
           </Link>
           <hr />
           <Link href="/expenses" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
             रोजचा खर्च (Expenses)
           </Link>
           <hr />
+          <Link href="/dashboard" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
+            Day Close Report
+          </Link>
+          <hr />
           <Link href="/settings" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
-            Add Menu
+            Add Menu & Settings
           </Link>
           <hr />
           <Link href="/transaction" onClick={() => setIsOpen(false)} className="block text-gray-700 hover:text-[#5c1315]">
-            Profit & Loss
+            Transactions & Profit
           </Link>
+          <hr />
+          <button onClick={handleLogout} className="flex items-center text-red-600 hover:text-red-800 font-semibold w-full mt-4">
+            <LogOut size={20} className="mr-2" /> Logout
+          </button>
         </nav>
       </div>
     </>

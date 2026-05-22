@@ -36,11 +36,20 @@ export interface Transaction {
   customerPhone?: string;
 }
 
+export interface CustomerPayment {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  amount: number;
+  date: string;
+}
+
 export interface Expense {
   id: string;
   title: string;
   amount: number;
   date: string;
+  category?: string;
 }
 
 interface Notification {
@@ -52,6 +61,8 @@ interface Notification {
 
 interface StoreState {
   isLoggedIn: boolean;
+  credentials: { username: string; pass: string };
+  updateCredentials: (username: string, pass: string) => void;
   login: (user: string, pass: string) => boolean;
   logout: () => void;
 
@@ -83,6 +94,10 @@ interface StoreState {
   expenses: Expense[];
   addExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
   deleteExpense: (id: string) => void;
+
+  // Customer Payments
+  customerPayments: CustomerPayment[];
+  addCustomerPayment: (payment: Omit<CustomerPayment, 'id' | 'date'>) => void;
 }
 
 const defaultMenu: MenuItem[] = [
@@ -100,8 +115,11 @@ export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
       isLoggedIn: false,
+      credentials: { username: 'abhishek', pass: 'abhishek' },
+      updateCredentials: (username, pass) => set({ credentials: { username, pass } }),
       login: (user, pass) => {
-        if (user === 'abhishek' && pass === 'abhishek') {
+        const { credentials } = get();
+        if (user === credentials.username && pass === credentials.pass) {
           set({ isLoggedIn: true });
           return true;
         }
@@ -192,6 +210,11 @@ export const useStore = create<StoreState>()(
       })),
       deleteExpense: (id) => set((state) => ({
         expenses: state.expenses.filter((e) => e.id !== id)
+      })),
+
+      customerPayments: [],
+      addCustomerPayment: (payment) => set((state) => ({
+        customerPayments: [{ ...payment, id: uuidv4(), date: new Date().toISOString() }, ...state.customerPayments]
       })),
     }),
     {

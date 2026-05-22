@@ -5,8 +5,8 @@ import TopHeader from '@/components/TopHeader';
 import BottomNav from '@/components/BottomNav';
 
 export const metadata: Metadata = {
-  title: 'RC Chicken65',
-  description: 'Billing System for RC Chicken65',
+  title: 'Billing Software',
+  description: 'Smart Billing System',
 };
 
 export default function RootLayout({

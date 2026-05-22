@@ -13,6 +13,9 @@ export default function ExpensesPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('इतर (Other)');
+
+  const categories = ['कच्चा माल (Raw Material)', 'लाईट बिल (Light Bill)', 'पगार (Salary)', 'किराणा (Groceries)', 'इतर (Other)'];
 
   useEffect(() => {
     setIsMounted(true);
@@ -32,12 +35,14 @@ export default function ExpensesPage() {
     
     addExpense({
       title,
-      amount: parseFloat(amount)
+      amount: parseFloat(amount),
+      category
     });
     
     toast.success('खर्च यशस्वीरित्या नोंदवला गेला!');
     setTitle('');
     setAmount('');
+    setCategory('इतर (Other)');
   };
 
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -62,6 +67,18 @@ export default function ExpensesPage() {
               className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#5c1315]/20 text-sm"
               placeholder="खर्चाचे नाव"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">खर्चाचा प्रकार (Category)</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#5c1315]/20 text-sm bg-white"
+            >
+              {categories.map((cat, idx) => (
+                <option key={idx} value={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">रक्कम (₹)</label>
@@ -101,6 +118,7 @@ export default function ExpensesPage() {
               <div key={expense.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
                 <div>
                   <div className="font-bold text-gray-800">{expense.title}</div>
+                  <div className="text-xs font-semibold text-amber-600 bg-amber-50 inline-block px-2 py-0.5 rounded mt-1">{expense.category || 'इतर (Other)'}</div>
                   <div className="text-xs text-gray-500 mt-1">{format(parseISO(expense.date), 'dd/MM/yyyy hh:mm a')}</div>
                 </div>
                 <div className="flex items-center space-x-4">
