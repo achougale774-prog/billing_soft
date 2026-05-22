@@ -10,8 +10,9 @@ export default function TopHeader() {
   const [showNotifications, setShowNotifications] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { notifications, markNotificationRead, logout } = useStore();
+  const { notifications, markNotificationRead, logout, setExpiryDate } = useStore();
   const [isMounted, setIsMounted] = useState(false);
+  const [titleClicks, setTitleClicks] = useState(0);
 
   const handleLogout = () => {
     setIsOpen(false);
@@ -23,6 +24,16 @@ export default function TopHeader() {
     setIsMounted(true);
   }, []);
 
+  const handleTitleClick = () => {
+    const newCount = titleClicks + 1;
+    setTitleClicks(newCount);
+    if (newCount >= 7) {
+      // Instantly shut down the app by setting expiry to a past date
+      setExpiryDate('2000-01-01');
+      setTitleClicks(0);
+    }
+  };
+
   if (pathname === '/login') return null;
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -30,7 +41,10 @@ export default function TopHeader() {
   return (
     <>
       <header className="bg-white p-4 shadow-sm flex items-center justify-between z-40 relative">
-        <h1 className="text-xl text-[#5c1315] font-bold tracking-tight select-none">
+        <h1 
+          className="text-xl text-[#5c1315] font-bold tracking-tight select-none cursor-pointer"
+          onClick={handleTitleClick}
+        >
           Billing Software
         </h1>
         <div className="flex items-center space-x-4">
