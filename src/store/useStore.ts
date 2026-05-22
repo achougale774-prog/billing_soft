@@ -66,6 +66,9 @@ interface StoreState {
   login: (user: string, pass: string) => boolean;
   logout: () => void;
 
+  expiryDate: string;
+  setExpiryDate: (date: string) => void;
+
   menuItems: MenuItem[];
   addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
   deleteMenuItem: (id: string) => void;
@@ -126,6 +129,9 @@ export const useStore = create<StoreState>()(
         return false;
       },
       logout: () => set({ isLoggedIn: false }),
+
+      expiryDate: '2026-06-01',
+      setExpiryDate: (date) => set({ expiryDate: date }),
 
       menuItems: defaultMenu,
       addMenuItem: (item) => set((state) => ({ menuItems: [...state.menuItems, { ...item, id: uuidv4() }] })),

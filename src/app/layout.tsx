@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import TopHeader from '@/components/TopHeader';
 import BottomNav from '@/components/BottomNav';
+import ExpiryGuard from '@/components/ExpiryGuard';
 
 export const metadata: Metadata = {
   title: 'Billing Software',
@@ -17,10 +18,12 @@ export default function RootLayout({
   return (
     <html lang="mr">
       <body className="antialiased bg-gray-50 max-w-md mx-auto min-h-screen shadow-lg relative pb-[72px]">
-        <Toaster position="top-center" richColors />
-        <TopHeader />
-        {children}
-        <BottomNav />
+        <ExpiryGuard>
+          <Toaster position="top-center" richColors />
+          <TopHeader />
+          {children}
+          <BottomNav />
+        </ExpiryGuard>
       </body>
     </html>
   );
