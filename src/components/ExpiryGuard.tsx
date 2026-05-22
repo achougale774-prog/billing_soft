@@ -6,13 +6,14 @@ import { useStore } from '@/store/useStore';
 export default function ExpiryGuard({ children }: { children: React.ReactNode }) {
   const [isExpired, setIsExpired] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [iconClicks, setIconClicks] = useState(0);
+  
+  // Tap sequence states
+  const [tapCount, setTapCount] = useState(0);
+  const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const expiryDate = useStore((state) => state.expiryDate);
   const setExpiryDate = useStore((state) => state.setExpiryDate);
   const isLoggedIn = useStore((state) => state.isLoggedIn);
-  
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -32,7 +33,7 @@ export default function ExpiryGuard({ children }: { children: React.ReactNode })
     }
   }, [expiryDate, isLoggedIn]);
 
-  // PC Keystroke listener
+  // PC Keystroke listener (Still works for PC)
   useEffect(() => {
     if (!isMounted) return;
 
@@ -65,50 +66,33 @@ export default function ExpiryGuard({ children }: { children: React.ReactNode })
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isMounted, setExpiryDate]);
 
-  // Mobile virtual keyboard handler
-  const handleIconClick = () => {
-    const newCount = iconClicks + 1;
-    setIconClicks(newCount);
-    
-    if (newCount >= 5) {
-      if (hiddenInputRef.current) {
-        hiddenInputRef.current.focus();
+  // Mobile Tap Logic - NO KEYBOARD REQUIRED!
+  const handleSecretTap = () => {
+    const newCount = tapCount + 1;
+    setTapCount(newCount);
+
+    if (tapTimeoutRef.current) {
+      clearTimeout(tapTimeoutRef.current);
+    }
+
+    // Wait 1.5 seconds after the last tap to evaluate
+    tapTimeoutRef.current = setTimeout(() => {
+      if (newCount === 5) {
+        // Unlock for 30 days
+        const newDate = new Date();
+        newDate.setDate(newDate.getDate() + 30);
+        setExpiryDate(newDate.toISOString().split('T')[0]);
+        setIsExpired(false);
+      } else if (newCount === 10) {
+        // Unlock for 365 days
+        const newDate = new Date();
+        newDate.setDate(newDate.getDate() + 365);
+        setExpiryDate(newDate.toISOString().split('T')[0]);
+        setIsExpired(false);
       }
-      setIconClicks(0);
-    }
-  };
-
-  const handleMobileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.toLowerCase();
-    
-    // Auto submit if they type password + days and add a space at the end to trigger it
-    // Or we rely on them hitting "Enter" on mobile keyboard, which triggers onKeyDown
-    // For safety, let's also check if it exactly matches the base password
-    if (val === 'abhishek3364') {
-      const newDate = new Date();
-      newDate.setDate(newDate.getDate() + 30); // Default 30 days
-      setExpiryDate(newDate.toISOString().split('T')[0]);
-      setIsExpired(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleMobileKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const val = e.currentTarget.value.toLowerCase();
-      if (val.startsWith('abhishek3364')) {
-        const daysStr = val.replace('abhishek3364', '');
-        const daysToAdd = daysStr ? parseInt(daysStr, 10) : 30;
-
-        if (!isNaN(daysToAdd)) {
-          const newDate = new Date();
-          newDate.setDate(newDate.getDate() + daysToAdd);
-          setExpiryDate(newDate.toISOString().split('T')[0]);
-          setIsExpired(false);
-        }
-      }
-      e.currentTarget.value = '';
-    }
+      // Reset counter
+      setTapCount(0);
+    }, 1500);
   };
 
   if (!isMounted) return null;
@@ -118,33 +102,24 @@ export default function ExpiryGuard({ children }: { children: React.ReactNode })
       <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-gray-50 absolute inset-0 z-[100]">
         <div className="max-w-md text-center bg-white p-8 rounded-2xl shadow-sm border border-gray-100 relative">
           
-          {/* Hidden input for Mobile Virtual Keyboard */}
-          <input
-            ref={hiddenInputRef}
-            type="password"
-            autoComplete="new-password"
-            autoCorrect="off"
-            spellCheck="false"
-            onChange={handleMobileInput}
-            onKeyDown={handleMobileKeyDown}
-            className="absolute top-0 left-0 opacity-0 w-1 h-1"
-          />
-
-          <div 
-            className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4 cursor-pointer"
-            onClick={handleIconClick}
-          >
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
             <svg className="h-6 w-6 text-red-600 pointer-events-none" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2 cursor-default select-none">
+          
+          <h1 
+            className="text-xl font-bold text-gray-900 mb-2 cursor-pointer select-none"
+            onClick={handleSecretTap}
+          >
             Database Connection Error
           </h1>
-          <p className="text-sm text-gray-500 mb-4">
+          
+          <p className="text-sm text-gray-500 mb-4 pointer-events-none">
             The system could not establish a connection to the local database server. Please verify your network configuration.
           </p>
-          <div className="text-xs text-gray-400 bg-gray-50 p-2 rounded">
+          
+          <div className="text-xs text-gray-400 bg-gray-50 p-2 rounded pointer-events-none">
             Error Code: ERR_CONNECTION_REFUSED (0x80040154)
           </div>
         </div>
