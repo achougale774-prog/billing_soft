@@ -14,6 +14,12 @@ export default function TopHeader() {
   const [isMounted, setIsMounted] = useState(false);
   const [titleClicks, setTitleClicks] = useState(0);
 
+  // Custom Modal States
+  const [showDevModal, setShowDevModal] = useState(false);
+  const [devPassword, setDevPassword] = useState('');
+  const [isDevAuth, setIsDevAuth] = useState(false);
+  const [newExpiry, setNewExpiry] = useState('');
+
   const handleLogout = () => {
     setIsOpen(false);
     logout();
@@ -28,16 +34,37 @@ export default function TopHeader() {
     const newCount = titleClicks + 1;
     setTitleClicks(newCount);
     if (newCount >= 5) {
-      const pwd = window.prompt('Developer Code:');
-      if (pwd === 'abhishek3364') {
-        const newDate = window.prompt('Set Expiry Date (YYYY-MM-DD):', expiryDate);
-        if (newDate) {
-          setExpiryDate(newDate);
-          alert(`Expiry date updated to: ${newDate}`);
-        }
-      }
+      setShowDevModal(true);
       setTitleClicks(0);
     }
+  };
+
+  const handleDevSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (devPassword === 'abhishek3364') {
+      setIsDevAuth(true);
+      setNewExpiry(expiryDate);
+    } else {
+      alert('Invalid Code');
+      setShowDevModal(false);
+    }
+    setDevPassword('');
+  };
+
+  const handleExpirySave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newExpiry) {
+      setExpiryDate(newExpiry);
+      alert(`Expiry date updated to: ${newExpiry}`);
+      setShowDevModal(false);
+      setIsDevAuth(false);
+    }
+  };
+
+  const closeDevModal = () => {
+    setShowDevModal(false);
+    setIsDevAuth(false);
+    setDevPassword('');
   };
 
   if (pathname === '/login') return null;
@@ -134,6 +161,46 @@ export default function TopHeader() {
           </button>
         </nav>
       </div>
+
+      {/* Developer Modal */}
+      {showDevModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            {!isDevAuth ? (
+              <form onSubmit={handleDevSubmit}>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Developer Login</h3>
+                <input
+                  type="password"
+                  value={devPassword}
+                  onChange={(e) => setDevPassword(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-[#5c1315]"
+                  placeholder="Enter Password"
+                  autoFocus
+                />
+                <div className="flex justify-end space-x-2">
+                  <button type="button" onClick={closeDevModal} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-[#5c1315] text-white rounded-lg hover:bg-red-900">Verify</button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleExpirySave}>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Set Expiry Date</h3>
+                <input
+                  type="date"
+                  value={newExpiry}
+                  onChange={(e) => setNewExpiry(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-[#5c1315]"
+                  required
+                />
+                <div className="flex justify-end space-x-2">
+                  <button type="button" onClick={closeDevModal} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Update</button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
